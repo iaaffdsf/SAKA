@@ -8,11 +8,11 @@
  * - Manual save: Ctrl/Cmd+S.
  */
 
-// ⚠ This side-effect import MUST be first — it sets MonacoEnvironment + loader
+// Side-effect: registers custom IDE themes via the CDN loader
 import '@/ide/setup/monacoSetup.js';
 
 import {
-  useRef, useEffect, useCallback, useState, type FC,
+  useRef, useEffect, useCallback, type FC,
 } from 'react';
 import MonacoEditorReact, { type OnMount, type OnChange } from '@monaco-editor/react';
 import type * as monacoNs from 'monaco-editor';
