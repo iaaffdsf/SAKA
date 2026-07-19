@@ -1,159 +1,102 @@
-import {
-  Code2,
-  Command,
-  Settings,
-  User,
-  ChevronDown,
-  Play,
-  Share2,
-} from 'lucide-react';
+import { Terminal, Cpu, FolderCode, ChevronRight } from 'lucide-react';
 import { useIDE } from '@/ide/contexts/IDEContext.js';
-import { useTheme } from '@/ide/contexts/ThemeContext.js';
-import { cn } from '@/utilities/cn.js';
+import { useWorkspace } from '@/ide/contexts/WorkspaceContext.js';
 
 // ─── Title bar ────────────────────────────────────────────────────────────────
 
-interface MenuItemProps {
-  label: string;
-}
-
-function MenuItem({ label }: MenuItemProps) {
-  return (
-    <button
-      className="px-2 py-0.5 text-xs rounded hover:bg-white/10 transition-colors"
-      style={{ color: 'var(--color-text-secondary)' }}
-    >
-      {label}
-    </button>
-  );
-}
-
 export default function TitleBar() {
-  const { openCommandPalette, activeFileId, openFiles } = useIDE();
-  const { theme, setTheme, themes } = useTheme();
+  const {
+    toggleSidebar, toggleAIPanel, toggleTerminal,
+    openCommandPalette, activeProject: ideProject,
+    openFiles, activeFileId,
+  } = useIDE();
+  const { activeProject } = useWorkspace();
 
-  const activeFile = openFiles.find(f => f.id === activeFileId);
+  const project = activeProject ?? ideProject;
+  const activeFile = openFiles.find((f) => f.id === activeFileId);
 
   return (
     <header
-      className="flex items-center h-10 flex-shrink-0 select-none border-b px-3 gap-3"
+      className="flex items-center h-9 px-3 flex-shrink-0 gap-3 select-none"
       style={{
         background: 'var(--color-surface)',
-        borderColor: 'var(--color-border-subtle)',
+        borderBottom: '1px solid var(--color-border-subtle)',
       }}
     >
-      {/* Traffic lights (macOS style) */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <div className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors cursor-pointer" />
-        <div className="w-3 h-3 rounded-full bg-yellow-500/80 hover:bg-yellow-500 transition-colors cursor-pointer" />
-        <div className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 transition-colors cursor-pointer" />
-      </div>
-
-      {/* Brand */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <Code2 className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
-        <span className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-          AI Dev Platform
+      {/* Branding */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <Cpu className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
+        <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+          AI IDE
         </span>
       </div>
 
-      {/* Menu bar */}
-      <nav className="hidden md:flex items-center gap-0.5">
-        {['File', 'Edit', 'View', 'Run', 'Terminal', 'Help'].map(item => (
-          <MenuItem key={item} label={item} />
-        ))}
-      </nav>
-
-      {/* Command palette trigger — centred */}
-      <div className="flex-1 flex justify-center">
-        <button
-          onClick={openCommandPalette}
-          className={cn(
-            'hidden md:flex items-center gap-2 px-3 py-1 rounded-md text-xs border',
-            'transition-all duration-150 hover:border-[var(--color-accent)]',
-            'hover:bg-[var(--color-surface-elevated)]',
-          )}
-          style={{
-            background: 'var(--color-background)',
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-muted)',
-            minWidth: 200,
-          }}
-        >
-          <Command className="w-3 h-3" />
-          <span>
-            {activeFile ? activeFile.path : 'Search or run a command…'}
-          </span>
-          <kbd
-            className="ml-auto text-[10px] px-1 rounded"
-            style={{ background: 'var(--color-surface-elevated)', color: 'var(--color-text-muted)' }}
-          >
-            ⌘ P
-          </kbd>
-        </button>
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1 flex-1 overflow-hidden text-sm min-w-0">
+        {project && (
+          <>
+            <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+            <FolderCode className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#e2a252' }} />
+            <span className="truncate" style={{ color: 'var(--color-text-secondary)' }}>
+              {project.name}
+            </span>
+          </>
+        )}
+        {activeFile && (
+          <>
+            <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+            <span className="truncate" style={{ color: 'var(--color-text-primary)' }}>
+              {activeFile.name}
+            </span>
+            {activeFile.isDirty && (
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--color-accent)' }} />
+            )}
+          </>
+        )}
       </div>
 
-      {/* Right actions */}
+      {/* Actions */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Run button */}
+        <TitleButton onClick={toggleSidebar} title="Toggle Sidebar (Ctrl+B)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <rect x="1" y="1" width="14" height="14" rx="2" />
+            <line x1="5" y1="1" x2="5" y2="15" />
+          </svg>
+        </TitleButton>
+        <TitleButton onClick={toggleTerminal} title="Toggle Terminal (Ctrl+J)">
+          <Terminal className="w-3.5 h-3.5" />
+        </TitleButton>
+        <TitleButton onClick={toggleAIPanel} title="Toggle AI Panel (Ctrl+Shift+A)">
+          <Cpu className="w-3.5 h-3.5" />
+        </TitleButton>
+        <div className="w-px h-4 mx-1" style={{ background: 'var(--color-border)' }} />
         <button
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all duration-150 hover:opacity-90"
-          style={{ background: 'var(--color-accent)', color: '#fff' }}
+          onClick={openCommandPalette}
+          className="flex items-center gap-2 px-3 py-1 rounded text-xs transition-colors"
+          style={{
+            background: 'var(--color-surface-elevated)',
+            color: 'var(--color-text-muted)',
+            border: '1px solid var(--color-border)',
+          }}
+          title="Command Palette (Ctrl+P)"
         >
-          <Play className="w-3 h-3 fill-white" />
-          <span className="hidden sm:inline">Run</span>
-        </button>
-
-        {/* Share */}
-        <button
-          className="p-1.5 rounded transition-colors hover:bg-white/10"
-          style={{ color: 'var(--color-text-secondary)' }}
-          title="Share"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Theme picker */}
-        <div className="relative group">
-          <button
-            className="p-1.5 rounded transition-colors hover:bg-white/10 flex items-center gap-1"
-            style={{ color: 'var(--color-text-secondary)' }}
-            title="Theme"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <ChevronDown className="w-2.5 h-2.5" />
-          </button>
-          <div
-            className="absolute right-0 top-full mt-1 py-1 rounded-md border shadow-xl hidden group-hover:block z-50 min-w-28"
-            style={{
-              background: 'var(--color-surface)',
-              borderColor: 'var(--color-border)',
-            }}
-          >
-            {themes.map(t => (
-              <button
-                key={t}
-                onClick={() => setTheme(t)}
-                className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 transition-colors flex items-center gap-2 capitalize"
-                style={{ color: theme === t ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}
-              >
-                {theme === t && <span className="w-1 h-1 rounded-full bg-[var(--color-accent)]" />}
-                {theme !== t && <span className="w-1 h-1" />}
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Avatar */}
-        <button
-          className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ml-1"
-          style={{ background: 'var(--color-accent)', color: '#fff' }}
-          title="Account"
-        >
-          U
+          <span>⌘P</span>
+          <span className="hidden sm:inline">Command Palette</span>
         </button>
       </div>
     </header>
+  );
+}
+
+function TitleButton({ onClick, title, children }: { onClick(): void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className="w-7 h-7 flex items-center justify-center rounded transition-colors hover:bg-white/10"
+      style={{ color: 'var(--color-text-muted)' }}
+    >
+      {children}
+    </button>
   );
 }

@@ -1,3 +1,5 @@
+import type { FileEntry, GitStatus, WorkspaceProject } from '@workspace/shared';
+
 // ─── IDE domain types ─────────────────────────────────────────────────────────
 
 export type Theme = 'dark' | 'midnight' | 'light';
@@ -6,14 +8,8 @@ export type ActivityBarTab = 'files' | 'search' | 'git' | 'extensions';
 
 export type EditorTab = 'editor' | 'preview';
 
-export interface FileNode {
-  id: string;
-  name: string;
-  type: 'file' | 'folder';
-  language?: string;
-  children?: FileNode[];
-  path: string;
-}
+// FileNode → FileEntry from shared (re-export for backward compat)
+export type FileNode = FileEntry;
 
 export interface OpenFile {
   id: string;
@@ -21,6 +17,7 @@ export interface OpenFile {
   path: string;
   language: string;
   isDirty: boolean;
+  content?: string;
 }
 
 export interface Command {
@@ -37,6 +34,18 @@ export interface PanelSizes {
   aiPanelWidth: number;
   terminalHeight: number;
 }
+
+// FileEntry with UI-only state (not sent to backend)
+export interface FileEntryUI extends FileEntry {
+  expanded?: boolean;
+  loading?: boolean;
+  gitStatus?: GitStatus;
+}
+
+export type Clipboard = {
+  action: 'copy' | 'cut';
+  entry: FileEntryUI;
+};
 
 export interface IDEState {
   // Visibility
@@ -58,6 +67,9 @@ export interface IDEState {
   openFiles: OpenFile[];
   activeFileId: string | null;
 
+  // Active workspace project
+  activeProject: WorkspaceProject | null;
+
   // Actions
   toggleSidebar(): void;
   toggleAIPanel(): void;
@@ -69,7 +81,12 @@ export interface IDEState {
   setTerminalHeight(h: number): void;
   setActiveActivityTab(tab: ActivityBarTab): void;
   setActiveEditorTab(tab: EditorTab): void;
-  openFile(file: FileNode): void;
+  setActiveProject(project: WorkspaceProject | null): void;
+  openFile(file: FileEntry): void;
   closeFile(id: string): void;
   setActiveFile(id: string): void;
+  updateFileContent(id: string, content: string, isDirty?: boolean): void;
 }
+
+// Re-export shared types used throughout the IDE
+export type { FileEntry, GitStatus, WorkspaceProject };

@@ -1,3 +1,5 @@
 - [Workspace package exports for tsx](workspace-tsx-exports.md) — workspace packages must set `"default"` to the `.ts` source file, not `./dist/`, when used with tsx at runtime.
 - [Local filesystem storage architecture](local-storage-arch.md) — backend uses JSON files in `.ai-ide/` at workspace root; no database, no Prisma.
 - [Shared tsconfig needs DOM lib](shared-tsconfig-dom.md) — shared/tsconfig.json must include `"lib": ["ES2022", "DOM"]` or setTimeout/browser globals are missing.
+- [Backend API workflow port conflict](backend-workflow-conflict.md) — `artifacts/api-server` owns port 8080; the `Backend API` workflow is redundant/failed. Frontend proxies `/api` via Vite to port 8080.
+- [Workspace + filesystem feature](workspace-filesystem-feature.md) — workspace and file management system architecture and key files.

@@ -32,13 +32,12 @@ export interface AiProvider {
   name: string;
   type: AiProviderType;
   baseUrl?: string;
-  /** Never send the raw key to the client — store only, display masked */
   apiKey?: string;
   enabled: boolean;
   createdAt: string;
 }
 
-// ─── Projects ─────────────────────────────────────────────────────────────────
+// ─── Projects (AI context / memory) ──────────────────────────────────────────
 
 export interface Project {
   id: string;
@@ -62,4 +61,48 @@ export interface MemoryEntry {
   projectId?: string;
   tags: string[];
   createdAt: string;
+}
+
+// ─── Workspace (local folder management) ─────────────────────────────────────
+
+export interface WorkspaceProject {
+  id: string;
+  name: string;
+  path: string;
+  description?: string;
+  pinned: boolean;
+  lastOpenedAt?: string;
+  createdAt: string;
+  color?: string;
+}
+
+// ─── File system ──────────────────────────────────────────────────────────────
+
+export type GitStatus = 'modified' | 'added' | 'deleted' | 'untracked' | 'renamed' | 'clean';
+
+export interface FileEntry {
+  id: string;         // absolute path used as stable id
+  name: string;
+  path: string;       // absolute path
+  relativePath: string;
+  type: 'file' | 'folder';
+  extension?: string;
+  size?: number;
+  gitStatus?: GitStatus;
+  children?: FileEntry[];
+}
+
+export interface FileContent {
+  path: string;
+  content: string;
+  size: number;
+  language: string;
+  encoding: 'utf8' | 'base64';
+}
+
+export interface SearchResult {
+  name: string;
+  path: string;
+  relativePath: string;
+  type: 'file' | 'folder';
 }

@@ -1,187 +1,10 @@
-import { X, Circle, Code2, Plus, ChevronRight, Eye } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Circle, Code2, Plus, Eye, Loader2 } from 'lucide-react';
 import { cn } from '@/utilities/cn.js';
 import { useIDE } from '@/ide/contexts/IDEContext.js';
+import { useWorkspace } from '@/ide/contexts/WorkspaceContext.js';
 import PreviewPanel from './PreviewPanel.js';
-
-// ─── Mock file content snippets ───────────────────────────────────────────────
-
-const MOCK_CONTENT: Record<string, string[]> = {
-  tsx: [
-    "import { useState } from 'react';",
-    "import { cn } from '@/utilities/cn';",
-    "",
-    "interface ButtonProps {",
-    "  variant?: 'primary' | 'secondary';",
-    "  children: React.ReactNode;",
-    "  onClick?: () => void;",
-    "}",
-    "",
-    "export default function Button({ variant = 'primary', children, onClick }: ButtonProps) {",
-    "  return (",
-    "    <button",
-    "      onClick={onClick}",
-    "      className={cn(",
-    "        'px-4 py-2 rounded-md font-medium transition-all',",
-    "        variant === 'primary' && 'bg-accent text-white hover:bg-accent-hover',",
-    "        variant === 'secondary' && 'bg-surface border border-border',",
-    "      )}",
-    "    >",
-    "      {children}",
-    "    </button>",
-    "  );",
-    "}",
-  ],
-  typescript: [
-    "export interface ApiResponse<T> {",
-    "  success: boolean;",
-    "  data?: T;",
-    "  error?: string;",
-    "  timestamp: string;",
-    "}",
-    "",
-    "export type Status = 'ok' | 'degraded' | 'down';",
-    "",
-    "export interface HealthCheckResponse {",
-    "  status: Status;",
-    "  version: string;",
-    "  uptime: number;",
-    "  services: {",
-    "    database: 'connected' | 'disconnected';",
-    "    websocket: 'listening' | 'stopped';",
-    "  };",
-    "}",
-  ],
-  json: [
-    '{',
-    '  "name": "@workspace/frontend",',
-    '  "version": "0.0.0",',
-    '  "type": "module",',
-    '  "scripts": {',
-    '    "dev": "vite --config vite.config.ts",',
-    '    "build": "vite build",',
-    '    "typecheck": "tsc --noEmit"',
-    '  },',
-    '  "dependencies": {',
-    '    "react": "catalog:",',
-    '    "wouter": "catalog:"',
-    '  }',
-    '}',
-  ],
-  css: [
-    '@import "tailwindcss";',
-    '',
-    '@theme {',
-    '  --color-background: #09090b;',
-    '  --color-surface:    #18181b;',
-    '  --color-accent:     #6366f1;',
-    '  --font-mono: "JetBrains Mono", monospace;',
-    '}',
-    '',
-    'body {',
-    '  margin: 0;',
-    '  background-color: var(--color-background);',
-    '  color: var(--color-text-primary);',
-    '  font-family: var(--font-sans);',
-    '}',
-  ],
-  markdown: [
-    '# AI Dev Platform',
-    '',
-    'A production-grade AI-powered development platform.',
-    '',
-    '## Stack',
-    '',
-    '| Layer    | Technology          |',
-    '|----------|---------------------|',
-    '| Frontend | React 19 + Vite 7   |',
-    '| Backend  | Express 5 + WS      |',
-    '| Database | Prisma + SQLite     |',
-    '',
-    '## Quick Start',
-    '',
-    '```bash',
-    'pnpm install',
-    'pnpm --filter @workspace/database run push',
-    '```',
-  ],
-};
-
-// ─── Token colouring (very simple) ───────────────────────────────────────────
-
-function tokenize(line: string, language: string): React.ReactNode {
-  if (language === 'markdown') {
-    if (line.startsWith('#')) return <span style={{ color: '#818cf8', fontWeight: 600 }}>{line}</span>;
-    if (line.startsWith('|')) return <span style={{ color: '#94a3b8' }}>{line}</span>;
-    if (line.startsWith('```')) return <span style={{ color: '#f59e0b' }}>{line}</span>;
-    return <span style={{ color: 'var(--color-text-secondary)' }}>{line}</span>;
-  }
-  if (language === 'json') {
-    return (
-      <span>
-        {line.split(/(".*?")/g).map((part, i) =>
-          part.startsWith('"') && part.endsWith('"')
-            ? <span key={i} style={{ color: i % 2 === 1 ? '#34d399' : '#f87171' }}>{part}</span>
-            : <span key={i} style={{ color: 'var(--color-text-secondary)' }}>{part}</span>
-        )}
-      </span>
-    );
-  }
-  // tsx / typescript / css — very light colouring
-  const keywordRe = /\b(import|export|from|interface|type|const|let|var|function|return|default|extends|implements)\b/g;
-  const parts: React.ReactNode[] = [];
-  let last = 0;
-  let match: RegExpExecArray | null;
-  while ((match = keywordRe.exec(line)) !== null) {
-    if (match.index > last) parts.push(<span key={last} style={{ color: 'var(--color-text-secondary)' }}>{line.slice(last, match.index)}</span>);
-    parts.push(<span key={match.index} style={{ color: '#c084fc' }}>{match[0]}</span>);
-    last = match.index + match[0].length;
-  }
-  if (last < line.length) parts.push(<span key={last} style={{ color: 'var(--color-text-secondary)' }}>{line.slice(last)}</span>);
-  return parts.length ? <>{parts}</> : <span style={{ color: 'var(--color-text-secondary)' }}>{line}</span>;
-}
-
-// ─── Tab pill ─────────────────────────────────────────────────────────────────
-
-interface TabPillProps {
-  file: { id: string; name: string; language: string; isDirty: boolean };
-  isActive: boolean;
-  onActivate: () => void;
-  onClose: () => void;
-}
-
-function TabPill({ file, isActive, onActivate, onClose }: TabPillProps) {
-  const dotColor = {
-    tsx: '#61dafb', typescript: '#3b82f6', javascript: '#f59e0b',
-    css: '#a855f7', json: '#f59e0b', markdown: '#94a3b8',
-  }[file.language] ?? 'var(--color-text-muted)';
-
-  return (
-    <div
-      className={cn(
-        'group flex items-center gap-1.5 px-3 h-full border-r cursor-pointer select-none flex-shrink-0',
-        'transition-colors duration-100 text-xs',
-      )}
-      style={{
-        background: isActive ? 'var(--color-background)' : 'var(--color-surface)',
-        borderColor: 'var(--color-border-subtle)',
-        color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
-        borderBottom: isActive ? '1px solid var(--color-background)' : '1px solid var(--color-border-subtle)',
-        marginBottom: isActive ? -1 : 0,
-      }}
-      onClick={onActivate}
-    >
-      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: dotColor }} />
-      <span>{file.name}</span>
-      {file.isDirty && <Circle className="w-2 h-2 fill-current opacity-60" />}
-      <button
-        className="opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded p-0.5 -mr-1 transition-all"
-        onClick={e => { e.stopPropagation(); onClose(); }}
-      >
-        <X className="w-3 h-3" />
-      </button>
-    </div>
-  );
-}
+import { getLanguageColor } from '@/ide/utilities/language.js';
 
 // ─── Editor panel ─────────────────────────────────────────────────────────────
 
@@ -189,134 +12,241 @@ export default function EditorPanel() {
   const {
     openFiles, activeFileId, activeEditorTab,
     closeFile, setActiveFile, setActiveEditorTab,
+    updateFileContent,
   } = useIDE();
+  const { readFile, writeFile } = useWorkspace();
 
-  const activeFile = openFiles.find(f => f.id === activeFileId);
-  const lines = activeFile ? (MOCK_CONTENT[activeFile.language] ?? MOCK_CONTENT['tsx']) : [];
+  const activeFile = openFiles.find((f) => f.id === activeFileId);
 
   return (
     <div
-      className="flex flex-col flex-1 overflow-hidden min-w-0"
-      style={{ background: 'var(--color-background)' }}
+      className="flex flex-col h-full w-full overflow-hidden"
+      style={{ background: 'var(--color-ide-editor)' }}
     >
-      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+      {/* Tab bar */}
       <div
-        className="flex items-end h-9 flex-shrink-0 border-b overflow-x-auto overflow-y-hidden"
-        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border-subtle)' }}
+        className="flex items-stretch overflow-x-auto flex-shrink-0 select-none"
+        style={{ borderBottom: '1px solid var(--color-border-subtle)', minHeight: 36 }}
       >
-        {openFiles.map(f => (
-          <TabPill
-            key={f.id}
-            file={f}
-            isActive={f.id === activeFileId}
-            onActivate={() => setActiveFile(f.id)}
-            onClose={() => closeFile(f.id)}
-          />
-        ))}
-
-        <button
-          className="h-full px-2 flex items-center justify-center flex-shrink-0 hover:bg-white/10 transition-colors"
-          style={{ color: 'var(--color-text-muted)' }}
-          title="New tab"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Editor / Preview switcher */}
-        {activeFile && (
-          <div className="ml-auto flex items-center gap-1 px-2 h-full flex-shrink-0">
-            {(['editor', 'preview'] as const).map(tab => (
+        {openFiles.map((file) => {
+          const isActive = file.id === activeFileId;
+          const ext = file.language ?? 'plaintext';
+          return (
+            <div
+              key={file.id}
+              onClick={() => setActiveFile(file.id)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 border-r cursor-pointer flex-shrink-0',
+                'text-sm transition-colors group max-w-[180px]',
+                isActive ? 'text-text-primary' : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.03]',
+              )}
+              style={{
+                borderRightColor: 'var(--color-border-subtle)',
+                borderBottom: isActive ? '1px solid var(--color-accent)' : '1px solid transparent',
+                background: isActive ? 'var(--color-ide-editor)' : 'var(--color-ide-sidebar)',
+              }}
+            >
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: getLanguageColor(ext) }} />
+              <span className="truncate">{file.name}</span>
+              {file.isDirty && (
+                <Circle className="w-2 h-2 flex-shrink-0 fill-current" style={{ color: 'var(--color-accent)' }} />
+              )}
               <button
-                key={tab}
-                onClick={() => setActiveEditorTab(tab)}
-                className={cn(
-                  'flex items-center gap-1 px-2 py-0.5 rounded text-[11px] capitalize transition-colors',
-                )}
-                style={{
-                  background: activeEditorTab === tab ? 'var(--color-surface-elevated)' : 'transparent',
-                  color: activeEditorTab === tab ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
-                }}
+                onClick={(e) => { e.stopPropagation(); closeFile(file.id); }}
+                className="ml-0.5 p-0.5 rounded opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:bg-white/10 transition-all flex-shrink-0"
               >
-                {tab === 'editor' ? <Code2 className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                {tab}
+                <X className="w-3 h-3" />
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          );
+        })}
 
-      {/* ── Breadcrumb ──────────────────────────────────────────────────── */}
-      {activeFile && (
-        <div
-          className="flex items-center gap-1 px-3 py-1 text-[11px] border-b flex-shrink-0"
-          style={{ borderColor: 'var(--color-border-subtle)', color: 'var(--color-text-muted)' }}
-        >
-          <span>my-project</span>
-          {activeFile.path.split('/').map((segment, i, arr) => (
-            <span key={i} className="flex items-center gap-1">
-              <ChevronRight className="w-3 h-3" />
-              <span style={{ color: i === arr.length - 1 ? 'var(--color-text-primary)' : undefined }}>
-                {segment}
-              </span>
-            </span>
-          ))}
+        {/* View toggle */}
+        <div className="ml-auto flex items-center px-2 gap-1 flex-shrink-0">
+          <button
+            onClick={() => setActiveEditorTab('editor')}
+            className={cn('px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors', activeEditorTab === 'editor' ? 'bg-white/10 text-text-primary' : 'text-text-muted hover:text-text-secondary')}
+          >
+            <Code2 className="w-3 h-3" /> Code
+          </button>
+          <button
+            onClick={() => setActiveEditorTab('preview')}
+            className={cn('px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors', activeEditorTab === 'preview' ? 'bg-white/10 text-text-primary' : 'text-text-muted hover:text-text-secondary')}
+          >
+            <Eye className="w-3 h-3" /> Preview
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* ── Content ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto min-h-0">
-        {!activeFile ? (
-          /* Empty state */
-          <div className="h-full flex flex-col items-center justify-center gap-4 select-none">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'var(--color-surface)' }}
-            >
-              <Code2 className="w-8 h-8" style={{ color: 'var(--color-accent)' }} />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                No file open
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                Select a file from the explorer or press{' '}
-                <kbd
-                  className="px-1 py-0.5 rounded text-[10px]"
-                  style={{ background: 'var(--color-surface-elevated)' }}
-                >
-                  ⌘ P
-                </kbd>
-              </p>
-            </div>
-          </div>
-        ) : activeEditorTab === 'preview' ? (
+      {/* Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeEditorTab === 'preview' ? (
           <PreviewPanel />
+        ) : activeFile ? (
+          <FileEditor
+            key={activeFile.id}
+            file={activeFile}
+            readFile={readFile}
+            writeFile={writeFile}
+            onContentChange={(content, dirty) => updateFileContent(activeFile.id, content, dirty)}
+          />
         ) : (
-          /* Code view */
-          <div className="flex min-h-full">
-            {/* Line numbers */}
-            <div
-              className="flex-shrink-0 px-4 py-4 text-right select-none"
-              style={{ background: 'var(--color-background)', color: 'var(--color-text-muted)', minWidth: 48 }}
-            >
-              {lines.map((_, i) => (
-                <div key={i} className="text-xs leading-6 font-mono">{i + 1}</div>
-              ))}
-            </div>
-            {/* Code */}
-            <pre
-              className="flex-1 p-4 overflow-x-auto text-xs leading-6 font-mono"
-              style={{ color: 'var(--color-text-secondary)', tabSize: 2 }}
-            >
-              {lines.map((line, i) => (
-                <div key={i} className="hover:bg-white/3 transition-colors px-1 rounded">
-                  {line === '' ? '\u00a0' : tokenize(line, activeFile.language)}
-                </div>
-              ))}
-            </pre>
+          <EmptyState />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Per-file editor pane ─────────────────────────────────────────────────────
+
+interface FileEditorProps {
+  file: { id: string; name: string; path: string; language: string; isDirty: boolean; content?: string };
+  readFile(path: string): Promise<{ content: string; language: string }>;
+  writeFile(path: string, content: string): Promise<void>;
+  onContentChange(content: string, isDirty: boolean): void;
+}
+
+function FileEditor({ file, readFile, writeFile, onContentChange }: FileEditorProps) {
+  const [content, setContent]   = useState(file.content ?? '');
+  const [loading, setLoading]   = useState(!file.content);
+  const [error,   setError]     = useState<string | null>(null);
+  const [saving,  setSaving]    = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load content if not yet fetched
+  useEffect(() => {
+    if (file.content !== undefined) { setContent(file.content); setLoading(false); return; }
+    setLoading(true);
+    readFile(file.path)
+      .then((fc) => { setContent(fc.content); onContentChange(fc.content, false); })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file.id]);
+
+  // Auto-save on Ctrl+S
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (!file.isDirty || saving) return;
+        setSaving(true);
+        writeFile(file.path, content)
+          .then(() => onContentChange(content, false))
+          .catch(() => {/* ignore */})
+          .finally(() => setSaving(false));
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [file.path, file.isDirty, content, saving, writeFile, onContentChange]);
+
+  // Tab key in textarea
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ta = textareaRef.current!;
+      const { selectionStart, selectionEnd } = ta;
+      const newContent = content.substring(0, selectionStart) + '  ' + content.substring(selectionEnd);
+      setContent(newContent);
+      onContentChange(newContent, true);
+      setTimeout(() => ta.setSelectionRange(selectionStart + 2, selectionStart + 2), 0);
+    }
+  };
+
+  const lines = content.split('\n');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full gap-2" style={{ color: 'var(--color-text-muted)' }}>
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span className="text-sm">Loading…</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-sm mb-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{file.path}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full overflow-hidden" style={{ fontFamily: 'var(--font-mono)' }}>
+      {/* Line numbers */}
+      <div
+        className="flex-shrink-0 select-none text-right overflow-hidden"
+        style={{
+          width: `${Math.max(String(lines.length).length, 2) * 9 + 20}px`,
+          paddingTop: '12px',
+          paddingRight: '8px',
+          paddingLeft: '8px',
+          fontSize: '13px',
+          lineHeight: '21px',
+          color: 'var(--color-text-muted)',
+          borderRight: '1px solid var(--color-border-subtle)',
+          background: 'var(--color-ide-editor)',
+        }}
+      >
+        {lines.map((_, i) => (
+          <div key={i}>{i + 1}</div>
+        ))}
+      </div>
+
+      {/* Editable content */}
+      <div className="relative flex-1 overflow-auto">
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={(e) => { setContent(e.target.value); onContentChange(e.target.value, true); }}
+          onKeyDown={handleKeyDown}
+          spellCheck={false}
+          className="absolute inset-0 w-full h-full resize-none bg-transparent outline-none"
+          style={{
+            fontSize: '13px',
+            lineHeight: '21px',
+            padding: '12px 16px',
+            color: 'var(--color-text-primary)',
+            caretColor: 'var(--color-accent)',
+            tabSize: 2,
+          }}
+        />
+        {saving && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 text-xs px-2 py-1 rounded" style={{ background: 'var(--color-surface)', color: 'var(--color-text-muted)' }}>
+            <Loader2 className="w-3 h-3 animate-spin" /> Saving…
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  const { setActiveActivityTab } = useIDE();
+  const { activeProject } = useWorkspace();
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-3">
+      <Code2 className="w-12 h-12 opacity-10" />
+      <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+        {activeProject ? 'Open a file from the explorer' : 'No project open'}
+      </p>
+      {!activeProject && (
+        <button
+          onClick={() => setActiveActivityTab('files')}
+          className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
+          style={{ background: 'var(--color-accent)', color: '#fff' }}
+        >
+          Open project
+        </button>
+      )}
     </div>
   );
 }

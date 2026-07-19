@@ -1,11 +1,13 @@
-import { createContext, useContext, useCallback, useState, ReactNode } from 'react';
+import { createContext, useContext, useCallback, useState, type ReactNode } from 'react';
 import { useLocalStorage } from '@/ide/hooks/useLocalStorage.js';
-import type { IDEState, ActivityBarTab, EditorTab, FileNode, OpenFile } from '@/ide/types/ide.js';
+import type { IDEState, ActivityBarTab, EditorTab, OpenFile } from '@/ide/types/ide.js';
+import type { FileEntry, WorkspaceProject } from '@workspace/shared';
+import { getLanguage } from '@/ide/utilities/language.js';
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_SIDEBAR_WIDTH   = 240;
-const DEFAULT_AI_PANEL_WIDTH  = 320;
+const DEFAULT_SIDEBAR_WIDTH   = 260;
+const DEFAULT_AI_PANEL_WIDTH  = 340;
 const DEFAULT_TERMINAL_HEIGHT = 200;
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -24,13 +26,16 @@ export function IDEProvider({ children }: { children: ReactNode }) {
   const [aiPanelWidth,   setAIPanelWidth]   = useLocalStorage('ide-ai-w',        DEFAULT_AI_PANEL_WIDTH);
   const [terminalHeight, setTerminalHeight] = useLocalStorage('ide-terminal-h',  DEFAULT_TERMINAL_HEIGHT);
 
-  // Active tabs
+  // Tabs
   const [activeActivityTab, setActiveActivityTab] = useState<ActivityBarTab>('files');
   const [activeEditorTab,   setActiveEditorTab]   = useState<EditorTab>('editor');
 
   // Open files
-  const [openFiles,   setOpenFiles]   = useState<OpenFile[]>([]);
+  const [openFiles,    setOpenFiles]    = useState<OpenFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
+
+  // Active project
+  const [activeProject, setActiveProject] = useState<WorkspaceProject | null>(null);
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
@@ -41,18 +46,19 @@ export function IDEProvider({ children }: { children: ReactNode }) {
   const openCommandPalette  = useCallback(() => setCommandPaletteOpen(true),  []);
   const closeCommandPalette = useCallback(() => setCommandPaletteOpen(false), []);
 
-  const openFile = useCallback((file: FileNode) => {
+  const openFile = useCallback((file: FileEntry) => {
     if (file.type === 'folder') return;
     setOpenFiles(prev => {
       if (prev.find(f => f.id === file.id)) {
         setActiveFileId(file.id);
         return prev;
       }
+      const lang = file.extension ? (getLanguage(file.name)) : 'plaintext';
       const next: OpenFile = {
         id: file.id,
         name: file.name,
         path: file.path,
-        language: file.language ?? 'plaintext',
+        language: lang,
         isDirty: false,
       };
       setActiveFileId(file.id);
@@ -79,6 +85,12 @@ export function IDEProvider({ children }: { children: ReactNode }) {
     setActiveFileId(id);
   }, []);
 
+  const updateFileContent = useCallback((id: string, content: string, isDirty = true) => {
+    setOpenFiles(prev =>
+      prev.map(f => f.id === id ? { ...f, content, isDirty } : f),
+    );
+  }, []);
+
   return (
     <IDEContext.Provider
       value={{
@@ -93,6 +105,7 @@ export function IDEProvider({ children }: { children: ReactNode }) {
         activeEditorTab,
         openFiles,
         activeFileId,
+        activeProject,
         toggleSidebar,
         toggleAIPanel,
         toggleTerminal,
@@ -103,9 +116,11 @@ export function IDEProvider({ children }: { children: ReactNode }) {
         setTerminalHeight,
         setActiveActivityTab,
         setActiveEditorTab,
+        setActiveProject,
         openFile,
         closeFile,
         setActiveFile,
+        updateFileContent,
       }}
     >
       {children}

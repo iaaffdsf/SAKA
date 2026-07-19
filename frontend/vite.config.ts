@@ -49,6 +49,19 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: true,
     fs: { strict: true },
+    proxy: {
+      // Forward all /api calls to the backend
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/ws': {
+        target: 'ws://localhost:8080',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port,
