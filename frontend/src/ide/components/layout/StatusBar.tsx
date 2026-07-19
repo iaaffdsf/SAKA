@@ -1,35 +1,32 @@
-import { GitBranch, CheckCircle, AlertCircle, Zap, Wifi } from 'lucide-react';
+import { GitBranch, CheckCircle, AlertCircle, Zap, Wifi, WifiOff } from 'lucide-react';
 import { useIDE } from '@/ide/contexts/IDEContext.js';
 import { useTheme } from '@/ide/contexts/ThemeContext.js';
 import { useWorkspace } from '@/ide/contexts/WorkspaceContext.js';
+import { useEditorSettings } from '@/ide/contexts/EditorSettingsContext.js';
 import { useState, useEffect } from 'react';
 
 // ─── Status bar ───────────────────────────────────────────────────────────────
 
 export default function StatusBar() {
-  const { openFiles, activeFileId } = useIDE();
-  const { theme } = useTheme();
-  const { activeProject, gitStatus } = useWorkspace();
-  const [branch, setBranch] = useState<string>('');
+  const { openFiles, activeFileId, cursorPosition } = useIDE();
+  const { theme }                                   = useTheme();
+  const { activeProject, gitStatus }                = useWorkspace();
+  const { settings }                                = useEditorSettings();
+
+  const [branch,    setBranch]    = useState<string>('');
   const [connected, setConnected] = useState(true);
 
-  const activeFile = openFiles.find((f) => f.id === activeFileId);
-  const gitChanges = Object.keys(gitStatus).length;
+  const activeFile  = openFiles.find((f) => f.id === activeFileId);
+  const gitChanges  = Object.keys(gitStatus).length;
+  const dirtyCount  = openFiles.filter((f) => f.isDirty).length;
 
-  // Fetch git branch
+  // Fetch git branch when project opens
   useEffect(() => {
     if (!activeProject) { setBranch(''); return; }
-    fetch(`/api/fs/git-status?path=${encodeURIComponent(activeProject.path)}`)
-      .then(async (r) => {
-        if (!r.ok) return;
-        // Branch from a separate call; we already have the status
-        // Use the project open signal to reset branch
-        setBranch('main'); // default — real branch detection would need a /api/fs/git-branch endpoint
-      })
-      .catch(() => setBranch(''));
+    setBranch('main'); // placeholder — real detection needs /api/fs/git-branch
   }, [activeProject]);
 
-  // Ping backend health
+  // Backend health ping
   useEffect(() => {
     const check = () => {
       fetch('/api/healthz')
@@ -41,63 +38,100 @@ export default function StatusBar() {
     return () => clearInterval(id);
   }, []);
 
+  const item = (children: React.ReactNode, title?: string) => (
+    <button
+      title={title}
+      className="flex items-center gap-1 hover:bg-white/15 px-1.5 py-0.5 rounded transition-colors"
+    >
+      {children}
+    </button>
+  );
+
   return (
     <footer
-      className="h-6 flex items-center justify-between px-3 flex-shrink-0 text-[11px] select-none"
+      className="h-6 flex items-center justify-between px-2 flex-shrink-0 text-[11px] select-none"
       style={{ background: 'var(--color-accent)', color: '#fff' }}
     >
-      {/* Left */}
-      <div className="flex items-center gap-3">
-        {branch && (
-          <button className="flex items-center gap-1 hover:bg-white/20 px-1.5 py-0.5 rounded transition-colors">
-            <GitBranch className="w-3 h-3" />
-            <span>{branch}</span>
-          </button>
+      {/* ── Left ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-0">
+        {branch && item(
+          <><GitBranch className="w-3 h-3" /><span>{branch}</span></>,
+          'Git branch',
         )}
         {activeProject && (
           <>
-            <button className="flex items-center gap-1 hover:bg-white/20 px-1.5 py-0.5 rounded transition-colors">
-              <CheckCircle className="w-3 h-3" />
-              <span>0 errors</span>
-            </button>
-            {gitChanges > 0 && (
-              <button className="flex items-center gap-1 hover:bg-white/20 px-1.5 py-0.5 rounded transition-colors">
-                <AlertCircle className="w-3 h-3" />
-                <span>{gitChanges} change{gitChanges !== 1 ? 's' : ''}</span>
-              </button>
+            {item(
+              <><CheckCircle className="w-3 h-3" /><span>0 errors</span></>,
+              'Problems',
+            )}
+            {gitChanges > 0 && item(
+              <><AlertCircle className="w-3 h-3" /><span>{gitChanges} change{gitChanges !== 1 ? 's' : ''}</span></>,
+              'Git changes',
+            )}
+            {dirtyCount > 0 && (
+              <span className="px-1.5 py-0.5 opacity-80">
+                {dirtyCount} unsaved
+              </span>
             )}
           </>
         )}
       </div>
 
-      {/* Centre */}
+      {/* ── Centre ───────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-1 opacity-90">
         <Zap className="w-3 h-3" />
         <span>AI IDE</span>
         {activeProject && (
           <>
-            <span className="opacity-50 mx-1">—</span>
+            <span className="opacity-40 mx-1">·</span>
             <span className="opacity-80 max-w-[140px] truncate">{activeProject.name}</span>
           </>
         )}
-        <span className="opacity-50 ml-2">· {theme}</span>
+        <span className="opacity-40 mx-1">·</span>
+        <span className="opacity-60">{theme}</span>
       </div>
 
-      {/* Right */}
-      <div className="flex items-center gap-3">
+      {/* ── Right ────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-0">
+        {/* Cursor position */}
+        {cursorPosition && (
+          <span className="px-1.5 py-0.5 opacity-80 tabular-nums" title="Cursor position">
+            Ln {cursorPosition.line}, Col {cursorPosition.column}
+          </span>
+        )}
+
+        {/* Active file language */}
         {activeFile && (
           <>
-            <span className="opacity-80">{activeFile.language}</span>
-            <span className="opacity-80">UTF-8</span>
+            <span className="opacity-40 mx-1">·</span>
+            <span className="px-1 opacity-80 capitalize">{activeFile.language}</span>
+            <span className="opacity-40 mx-1">·</span>
+            <span className="px-1 opacity-70">
+              {settings.tabSize === 1 ? '1 space' : `${settings.tabSize} spaces`}
+            </span>
+            <span className="opacity-40 mx-1">·</span>
+            <span className="px-1 opacity-70">UTF-8</span>
           </>
         )}
-        <button
-          className="flex items-center gap-1 hover:bg-white/20 px-1.5 py-0.5 rounded transition-colors"
-          title={connected ? 'Backend connected' : 'Backend unreachable'}
-        >
-          <Wifi className={`w-3 h-3 ${connected ? '' : 'opacity-40'}`} />
-          <span>{connected ? 'Connected' : 'Offline'}</span>
-        </button>
+
+        {/* Connection */}
+        {item(
+          <>
+            {connected
+              ? <Wifi className="w-3 h-3" />
+              : <WifiOff className="w-3 h-3 opacity-50" />
+            }
+            <span>{connected ? 'Connected' : 'Offline'}</span>
+          </>,
+          connected ? 'Backend connected' : 'Backend unreachable',
+        )}
+
+        {/* Auto-save indicator */}
+        {settings.autoSaveDelay > 0 && (
+          <span className="px-1.5 py-0.5 opacity-60" title="Auto-save enabled">
+            AS
+          </span>
+        )}
       </div>
     </footer>
   );

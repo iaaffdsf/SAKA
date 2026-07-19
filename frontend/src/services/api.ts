@@ -15,7 +15,19 @@ async function request<T>(
     ...init,
   });
 
-  const data = (await response.json()) as ApiResponse<T>;
+  // Guard against empty or non-JSON responses (e.g. 502 from proxy when
+  // backend is not yet ready) before attempting to parse.
+  const text = await response.text();
+  if (!text.trim()) {
+    throw new Error(`HTTP ${response.status}: empty response from server`);
+  }
+
+  let data: ApiResponse<T>;
+  try {
+    data = JSON.parse(text) as ApiResponse<T>;
+  } catch {
+    throw new Error(`HTTP ${response.status}: invalid JSON — ${text.slice(0, 120)}`);
+  }
 
   if (!response.ok) {
     throw new Error(data.error ?? `HTTP ${response.status}`);

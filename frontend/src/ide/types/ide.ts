@@ -8,6 +8,8 @@ export type ActivityBarTab = 'files' | 'search' | 'git' | 'extensions';
 
 export type EditorTab = 'editor' | 'preview';
 
+export interface CursorPosition { line: number; column: number }
+
 // FileNode → FileEntry from shared (re-export for backward compat)
 export type FileNode = FileEntry;
 
@@ -70,6 +72,9 @@ export interface IDEState {
   // Active workspace project
   activeProject: WorkspaceProject | null;
 
+  // Cursor position (updated by Monaco, consumed by StatusBar)
+  cursorPosition: CursorPosition | null;
+
   // Actions
   toggleSidebar(): void;
   toggleAIPanel(): void;
@@ -86,6 +91,7 @@ export interface IDEState {
   closeFile(id: string): void;
   setActiveFile(id: string): void;
   updateFileContent(id: string, content: string, isDirty?: boolean): void;
+  setCursorPosition(pos: CursorPosition | null): void;
 }
 
 // Re-export shared types used throughout the IDE

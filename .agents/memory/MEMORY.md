@@ -3,3 +3,5 @@
 - [Shared tsconfig needs DOM lib](shared-tsconfig-dom.md) — shared/tsconfig.json must include `"lib": ["ES2022", "DOM"]` or setTimeout/browser globals are missing.
 - [Backend API workflow port conflict](backend-workflow-conflict.md) — `artifacts/api-server` owns port 8080; the `Backend API` workflow is redundant/failed. Frontend proxies `/api` via Vite to port 8080.
 - [Workspace + filesystem feature](workspace-filesystem-feature.md) — workspace and file management system architecture and key files.
+- [Monaco editor integration](monaco-editor-integration.md) — Monaco 0.55.1 setup: workers via ?worker imports, loader.config({ monaco }), TypeScript service via (m as any).languages?.typescript.
+- [API empty-body resilience](api-empty-body.md) — api.ts request() must read response.text() before JSON.parse; backend 502s during startup return empty bodies that crash response.json().
