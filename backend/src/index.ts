@@ -3,19 +3,18 @@ import { createApp } from './app.js';
 import { createWsServer } from './websocket/ws-server.js';
 import { config } from './utilities/config.js';
 import { logger } from './utilities/logger.js';
-import { prisma } from './database/client.js';
+import { checkStorage, CONFIG_DIR } from './services/storage.service.js';
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
 async function start(): Promise<void> {
-  // Verify database connectivity before accepting traffic
-  try {
-    await prisma.$connect();
-    logger.info('Database connected');
-  } catch (err) {
-    logger.error({ err }, 'Failed to connect to database');
+  // Verify local filesystem storage is accessible before accepting traffic
+  const storageOk = await checkStorage();
+  if (!storageOk) {
+    logger.error('Local storage check failed — cannot write to config directory');
     process.exit(1);
   }
+  logger.info({ configDir: CONFIG_DIR }, 'Local storage ready');
 
   const app = createApp();
   const server = http.createServer(app);
@@ -31,18 +30,16 @@ async function start(): Promise<void> {
   });
 
   // ── Graceful shutdown ────────────────────────────────────────────────────────
-  const shutdown = async (signal: string): Promise<void> => {
+  const shutdown = (signal: string): void => {
     logger.info({ signal }, 'Shutdown signal received');
-
-    server.close(async () => {
-      await prisma.$disconnect();
-      logger.info('Server closed, database disconnected');
+    server.close(() => {
+      logger.info('Server closed');
       process.exit(0);
     });
   };
 
-  process.on('SIGTERM', () => void shutdown('SIGTERM'));
-  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 start().catch((err: unknown) => {

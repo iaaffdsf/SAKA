@@ -1,16 +1,6 @@
 import type { AppConfig } from '../types/index.js';
 
 // ─── Application configuration ───────────────────────────────────────────────
-// Reads and validates required environment variables at startup.
-// Throws early if anything critical is missing.
-
-function requireEnv(key: string): string {
-  const value = process.env[key];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-  return value;
-}
 
 function parsePort(raw: string | undefined): number {
   const port = Number(raw ?? '8080');
@@ -26,7 +16,6 @@ export function loadConfig(): AppConfig {
   return {
     port: parsePort(process.env.PORT),
     nodeEnv,
-    sessionSecret: requireEnv('SESSION_SECRET'),
     isDevelopment: nodeEnv === 'development',
     isProduction: nodeEnv === 'production',
   };

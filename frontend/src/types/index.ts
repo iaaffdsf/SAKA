@@ -20,6 +20,9 @@ export interface ThemeConfig {
 export type {
   ApiResponse,
   HealthCheckResponse,
-  User,
+  AppSettings,
+  AiProvider,
+  Project,
+  MemoryEntry,
   Status,
 } from '@workspace/shared';

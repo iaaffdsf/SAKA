@@ -6,7 +6,7 @@ export interface HealthCheckResponse {
   timestamp: string;
   uptime: number;
   services: {
-    database: 'connected' | 'disconnected';
+    storage: 'ok' | 'error';
     websocket: 'listening' | 'stopped';
   };
 }

@@ -44,3 +44,6 @@ Thumbs.db
 .replit.nix
 replit.nix
 attached_assets/
+
+# Local AI IDE config
+.ai-ide/

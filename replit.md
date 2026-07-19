@@ -4,38 +4,35 @@ A next-generation, browser-based AI-powered integrated development environment.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/ai-ide run dev` — run the frontend (port assigned by workflow)
-- `pnpm --filter @workspace/api-server run dev` — run the API server
+- `pnpm --filter @workspace/frontend run dev` — run the frontend (workflow: "Start application", port 5000)
+- `pnpm --filter @workspace/backend run dev` — run the API server (workflow: "Backend API", port 8080)
 - `pnpm run typecheck` — full TypeScript check across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `npx eslint .` — lint all TypeScript files
 - `npx prettier --write .` — format all files
-- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — session signing secret
+- No required env vars — the backend uses local filesystem storage only
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- Frontend: React 19 + Vite 7 + Tailwind CSS v4 + Wouter + TanStack Query
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod v4, drizzle-zod
-- API codegen: Orval (from OpenAPI spec in lib/api-spec/openapi.yaml)
+- pnpm workspaces, Node.js 20, TypeScript 5.9
+- Frontend: React 19 + Vite 7 + Tailwind CSS v4 + Wouter
+- API: Express 5 + WebSocket (ws)
+- Storage: local filesystem JSON (`.ai-ide/` at workspace root — no database)
 - Linting: ESLint v9 flat config + typescript-eslint + eslint-plugin-react-hooks
 - Formatting: Prettier
-- Build: esbuild (API server CJS bundle), Vite (frontend)
+- Build: tsc (API server), Vite (frontend)
 
 ## Where things live
 
-- `artifacts/ai-ide/src/` — React frontend source
-- `artifacts/ai-ide/src/App.tsx` — router setup (wouter Switch/Route)
-- `artifacts/ai-ide/src/index.css` — Tailwind + CSS custom properties (design tokens)
-- `artifacts/api-server/src/routes/` — Express API route handlers
-- `lib/api-spec/openapi.yaml` — **source of truth** for all API contracts
-- `lib/api-client-react/src/generated/` — generated React Query hooks (do not edit)
-- `lib/api-zod/src/generated/` — generated Zod schemas (do not edit)
-- `lib/db/src/schema/` — Drizzle table definitions
+- `frontend/src/` — React frontend source
+- `frontend/src/App.tsx` — router setup (wouter Switch/Route)
+- `frontend/src/index.css` — Tailwind + CSS custom properties (design tokens)
+- `frontend/src/services/` — typed API client functions (api.ts, settings.ts, providers.ts, projects.ts, memory.ts)
+- `frontend/src/ide/` — IDE panels, context, hooks
+- `backend/src/routes/` — Express API route handlers
+- `backend/src/services/` — business logic (storage, settings, providers, projects, memory, health)
+- `shared/src/types/` — shared TypeScript types used by both frontend and backend
+- `.ai-ide/` — local JSON config files written by the backend (gitignored)
 - `eslint.config.js` — ESLint flat config (root)
 - `.prettierrc` — Prettier config (root)
 

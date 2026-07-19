@@ -1,3 +1,3 @@
 - [Workspace package exports for tsx](workspace-tsx-exports.md) — workspace packages must set `"default"` to the `.ts` source file, not `./dist/`, when used with tsx at runtime.
-- [Prisma SQLite setup](prisma-sqlite-setup.md) — schema at `database/prisma/schema.prisma`, client output `../src/generated/client`, env var `SQLITE_DATABASE_URL` (not `DATABASE_URL` which Replit manages for Postgres).
-- [Artifact run-command delegation](artifact-run-delegation.md) — artifact.toml run commands can point to any workspace package; updating them via verifyAndReplaceArtifactToml re-routes preview routing without moving the artifact directory.
+- [Local filesystem storage architecture](local-storage-arch.md) — backend uses JSON files in `.ai-ide/` at workspace root; no database, no Prisma.
+- [Shared tsconfig needs DOM lib](shared-tsconfig-dom.md) — shared/tsconfig.json must include `"lib": ["ES2022", "DOM"]` or setTimeout/browser globals are missing.

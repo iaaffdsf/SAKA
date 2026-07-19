@@ -27,7 +27,6 @@ packages:
   - frontend         # React + Vite + Tailwind UI
   - backend          # Node.js + Express + WebSocket API
   - shared           # Shared TypeScript types and utilities
-  - database         # Prisma schema + SQLite (dev) migrations
   # ── Legacy Replit artifact shells (routing/preview infrastructure) ─────────
   - artifacts/*
   # ── Shared libraries ──────────────────────────────────────────────────────
@@ -69,8 +68,6 @@ onlyBuiltDependencies:
   - esbuild
   - msw
   - unrs-resolver
-  - '@prisma/client'
-  - prisma
 
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms

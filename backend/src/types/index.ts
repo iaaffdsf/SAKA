@@ -1,17 +1,8 @@
-import type { Request } from 'express';
-
-// ─── Augmented Express types ──────────────────────────────────────────────────
-
-export interface AuthenticatedRequest extends Request {
-  userId?: string;
-}
-
 // ─── Application configuration ───────────────────────────────────────────────
 
 export interface AppConfig {
   port: number;
   nodeEnv: string;
-  sessionSecret: string;
   isDevelopment: boolean;
   isProduction: boolean;
 }
@@ -31,4 +22,8 @@ export type {
   HealthCheckResponse,
   WebSocketMessage,
   WebSocketEvent,
+  AppSettings,
+  AiProvider,
+  Project,
+  MemoryEntry,
 } from '@workspace/shared';
