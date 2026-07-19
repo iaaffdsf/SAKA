@@ -78,3 +78,44 @@ body {
   background-color: var(--color-accent-subtle);
   color: var(--color-text-primary);
 }
+
+/* ─── IDE-specific tokens ───────────────────────────────────────────────────── */
+@theme {
+  --color-ide-sidebar:   #131316;
+  --color-ide-editor:    #0c0c0f;
+  --color-ide-terminal:  #0a0a0c;
+}
+
+/* ─── Command palette entrance animation ────────────────────────────────────── */
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ─── Bounce animation for AI typing dots ───────────────────────────────────── */
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%           { transform: translateY(-4px); }
+}
+.animate-bounce {
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+/* ─── Spin animation ────────────────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* ─── IDE — no outer scroll ─────────────────────────────────────────────────── */
+body:has([data-ide-root]) {
+  overflow: hidden;
+}

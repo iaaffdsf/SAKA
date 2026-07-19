@@ -120,7 +120,7 @@ export default function HomePage() {
 
         {/* CTAs */}
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button size="lg">
+          <Button size="lg" onClick={() => window.location.href = '/ide'}>
             Start building
             <ArrowRight size={16} />
           </Button>
