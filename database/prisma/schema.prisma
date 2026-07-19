@@ -1,0 +1,33 @@
+// ─── Prisma Schema ────────────────────────────────────────────────────────────
+//
+// Provider : SQLite (development)
+// DB file  : database/prisma/dev.db
+//
+// Commands (run from workspace root):
+//   pnpm --filter @workspace/database run push      → sync schema to DB
+//   pnpm --filter @workspace/database run generate  → regenerate client
+//   pnpm --filter @workspace/database run studio    → open Prisma Studio
+//   pnpm --filter @workspace/database run seed      → seed initial data
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SQLITE_DATABASE_URL")
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}

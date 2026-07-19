@@ -11,12 +11,12 @@ paths = [ "/" ]
 localPort = 23107
 
 [services.development]
-run = "pnpm --filter @workspace/ai-ide run dev"
+run = "pnpm --filter @workspace/frontend run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/ai-ide", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/frontend", "run", "build" ]
 serve = "static"
-publicDir = "artifacts/ai-ide/dist/public"
+publicDir = "frontend/dist/public"
 
 [[services.production.rewrites]]
 from = "/*"
